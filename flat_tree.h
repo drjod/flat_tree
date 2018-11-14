@@ -10,8 +10,8 @@
 namespace jod
 {
 
-using _size_type = int;
-const _size_type _empty = 0;
+using _size_type = long;
+const _size_type _empty = 0;  // for height
 
 template<typename Key, typename T, typename Compare> struct flat_tree_iterator;
 template<typename Key, typename T, typename Compare> struct const_flat_tree_iterator;
@@ -64,7 +64,7 @@ struct flat_tree
 		size_type height() { return _height; }
 	};
 
-	flat_tree() : root(nullptr), _size(_empty) {}
+	flat_tree() : root(nullptr), _size(0) {}
 	~flat_tree() { if(root != nullptr) clear(root); }
 	// -----------------------------------------------------
 	iterator begin();
@@ -77,7 +77,7 @@ struct flat_tree
 	const_reverse_iterator crbegin();
 	const_reverse_iterator crend();
 	// -----------------------------------------------------
-	void insert(const value_type& _data) { root = insert(root, nullptr, _data); ++_size; }
+	void insert(const value_type& _data); 
 	bool erase(const key_type& key);
 	void clear() { clear(root); _size = _empty; }
 
@@ -90,7 +90,7 @@ struct flat_tree
 
 	mapped_type first_value() const { return first_node(root).second; }
 	mapped_type last_value() const { return last_node(root).second; }
-	size_type _height() const { return _height(root); }
+	size_type height() const { return height(root); }
 	size_type size() const { return _size; }
 	bool empty() const { return _size == _empty; }
 private:
@@ -111,8 +111,27 @@ private:
 	node* first_node(node* _node) const;
 	node* last_node(node* _node) const;
 	template<typename F> void traverse(node* _node, F f) const ;
-	size_type _height(node* _node) const { return (_node == nullptr) ? _empty-1 : _node->_height; }
+	size_type height(node* _node) const { return (_node == nullptr) ? _empty-1 : _node->_height; }
 };
+
+// ------------------------------------------------------------------------------
+
+template<typename Key, typename T, typename Compare>
+void flat_tree<Key, T, Compare>::insert(const flat_tree<Key, T, Compare>::value_type& _data) 
+{
+	try
+	{
+		root = insert(root, nullptr, _data); 
+		++_size; 
+	}
+	catch(...)
+	{
+		size_type _ssize = 0;
+		traverse(root, [&_ssize](flat_tree<Key, T, Compare>::node) { ++_ssize; });
+		_size = _ssize;
+		throw;
+	}
+}
 
 // ------------------------------------------------------------------------------
 
@@ -132,7 +151,7 @@ bool flat_tree<Key, T, Compare>::erase(const flat_tree::key_type& key)
 // balance flat_tree branch
 template<typename Key, typename T, typename Compare>
 typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::rotate_left(
-											flat_tree<Key, T, Compare>::node* _node)
+								flat_tree<Key, T, Compare>::node* _node)
 {
 	// std::cout << "rotate left\n";
 	node* root_new = _node->right;
@@ -148,15 +167,15 @@ typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::rotate_le
 	if(node_moved)
 		node_moved->parent = _node;
 
-	_node->_height = std::max(_height(_node->left), _height(_node->right)) + 1;
-	root_new->_height = std::max(_height(root_new->left), _height(root_new->right)) + 1;
+	_node->_height = std::max(height(_node->left), height(_node->right)) + 1;
+	root_new->_height = std::max(height(root_new->left), height(root_new->right)) + 1;
 	return root_new;
 }
 
 
 template<typename Key, typename T, typename Compare>
 typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::rotate_right(
-											flat_tree<Key, T, Compare>::node* _node)
+								flat_tree<Key, T, Compare>::node* _node)
 {
 	// std::cout << "rotate right\n";
 	node* root_new = _node->left;
@@ -172,21 +191,21 @@ typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::rotate_ri
 	if(node_moved)
 		node_moved->parent = _node;
 
-	_node->_height = std::max(_height(_node->left), _height(_node->right)) + 1;
-	root_new->_height = std::max(_height(root_new->left), _height(root_new->right)) + 1;
+	_node->_height = std::max(height(_node->left), height(_node->right)) + 1;
+	root_new->_height = std::max(height(root_new->left), height(root_new->right)) + 1;
 	return root_new;
 }
 
 
 template<typename Key, typename T, typename Compare>
 typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::balance_flat_tree(
-											flat_tree<Key, T, Compare>::node* _node)
+								flat_tree<Key, T, Compare>::node* _node)
 {
-	size_type balance = _height(_node->right) - _height(_node->left); 
+	size_type balance = height(_node->right) - height(_node->left); 
 
 	if(balance > 1)
 	{
-		if(_height(_node->right->right) >= _height(_node->right->left))
+		if(height(_node->right->right) >= height(_node->right->left))
 			return rotate_left(_node);
 		else
 		{
@@ -197,7 +216,7 @@ typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::balance_f
 
 	if(balance < -1)
 	{
-		if(_height(_node->left->left) >= _height(_node->left->right))
+		if(height(_node->left->left) >= height(_node->left->right))
 			return rotate_right(_node);
 		else
 		{
@@ -226,7 +245,7 @@ typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::insert(
 	else if(compare(_node->_data.first, _data.first))
 		_node->right = insert(_node->right, _node, _data);
 
-	_node->_height = std::max(_height(_node->left), _height(_node->right)) + 1;
+	_node->_height = std::max(height(_node->left), height(_node->right)) + 1;
 	_node = balance_flat_tree(_node);
 	
 	return _node;
@@ -268,7 +287,7 @@ typename flat_tree<Key, T, Compare>::node* flat_tree<Key, T, Compare>::erase(
 		erase(_node->right, _node->_data.first);
 	}
 
-	_node->_height = std::max(_height(_node->left), _height(_node->right)) + 1;
+	_node->_height = std::max(height(_node->left), height(_node->right)) + 1;
 	_node = balance_flat_tree(_node);
 
 	return _node;
@@ -349,7 +368,7 @@ typename flat_tree<Key, T, Compare>::mapped_type&
 	{
 		node* _node  = insert(root, nullptr, std::pair<key_type, mapped_type>{key, {}});
 		//return _node->data().second;
-		iterator it = find(root, key);  // slow, but works 
+		iterator it = find(root, key);  // loose some speed, but works 
 		return (*it).second; 
 	}
 	

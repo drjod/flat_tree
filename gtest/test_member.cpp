@@ -26,6 +26,8 @@ TEST_F(TestMemberFixture, member)
 	
 	EXPECT_EQ(t.size(), 8);
 	EXPECT_FALSE(t.empty());
+	EXPECT_EQ(t.height(), 3);
+
 
 	jod::flat_tree<int, int>::iterator it = t.find(13);
 	EXPECT_EQ(it->second, 130);
